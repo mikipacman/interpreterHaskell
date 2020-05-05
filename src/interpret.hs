@@ -37,8 +37,12 @@ run v p s = let ts = myLLexer s in case p ts of
         exitFailure
     Ok  tree -> do 
         showTree v tree
+        putStrV v "\n[Program is running]\n"
+
         res <- runTree tree
-        putStrLn $ show res
+
+        putStrV v "\n[MemoryState after program execution]\n"
+        putStrV v $ show res
         exitSuccess
 
 

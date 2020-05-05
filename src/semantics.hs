@@ -3,14 +3,16 @@ import Data.Map (Map, insert, (!), empty, fromList)
 import AbsGramatyka
 import ProgramTypes
 import Control.Monad.State
- 
 
 -- SEMANTIC FUNCTIONS --
+
 
 semD :: Decl -> DoubleMonad ()
 semD decl = case decl of
     FDecl t i p s e -> do
-        let new_func var_list = do  -- TODO add recursion and passing arguments
+        let new_func val_list = do  -- TODO add recursion and passing arguments
+            let decl_list = map mapToDecl $ zip p val_list
+            semB $ Block $ map (\x -> VDecStmt x) decl_list  
             semB $ Block s
             semE e
         setNewValue i (VFun (Fun new_func))
@@ -60,7 +62,21 @@ semS stmt = case stmt of
                         loop ()
                     else return ()
         in loop () 
-    ForStmt d e a b -> return () -- TODO
+    ForStmt d es as b -> do 
+        semD d
+        let step = Block $ map (\x -> AsStmt x) as
+        loop step
+        where 
+            loop step = do
+                    vs <- semManyE es
+                    let cont = all (== True) $ map (\(VBool v) -> v) vs
+                    if cont
+                    then do
+                        semB b
+                        semB step
+                        loop step
+                    else return ()
+
     AsStmt (VarAs i e) -> do
         val <- semE e
         setValue i val
@@ -69,6 +85,14 @@ semS stmt = case stmt of
         semE e
         return ()
     SCostStmt c -> return () -- TODO
+
+
+semManyE :: [Expr] -> DoubleMonad [ValueUnion]
+semManyE [] = return []
+semManyE (e:es) = do
+    v <- semE e
+    vs <- semManyE es 
+    return (v:vs) 
 
 
 semE :: Expr -> DoubleMonad ValueUnion
@@ -85,8 +109,9 @@ semE exp = case exp of
         val <- semE e
         return val
     ExprCall i es -> do
-        (VFun (Fun f)) <- getValue i -- TODO Add args
-        f []
+        (VFun (Fun f)) <- getValue i
+        vs <- semManyE es
+        f vs
     ExprAcc i e -> return (VInt 0) -- TODO when arrays are ready
     Neg e -> do
         (VInt val) <- semE e
@@ -150,7 +175,4 @@ semP (Program []) = do
 
 
 runTree :: Program -> IO MemoryState
-runTree p = evalStateT (semP p) (MemoryState 
-    { id_map = fromList [(Ident "print", 0)]       -- TODO move built in functions somewhere else
-    , loc_map =  fromList [(0, VFun $ Fun print_func)]
-    })
+runTree p = evalStateT (semP p) get_init_memory_state

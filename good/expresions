@@ -1,17 +1,14 @@
-int dupa() {
-	return 1;
+int silnia(int n) {
+	print(n + 10);
+
+	return 0;
 }
 
 int main () {
-	int x = 1, a = 2;
-
-	if (x != 1) {
-		a = 3;
-	} else {
-		a = dupa();
-	}
-
-	print(1);
+	int m = readInt();
+	
+	silnia(1);
+	silnia(m);
 
 	return 0;
 }

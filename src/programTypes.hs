@@ -64,12 +64,32 @@ setValue i v = do
         })
     return ()
 
+
+mapToDecl :: (FuncDeclItem, ValueUnion) -> Decl
+mapToDecl (FDItem t i, VInt v) = VDecl t [Init i (ExprLit (IntL v))] 
+mapToDecl (FDItem t i, VBool v) = case v of 
+    True -> VDecl t [Init i (ExprLit TrueL)] 
+    False -> VDecl t [Init i (ExprLit FalseL)] 
+
+
 -- Built in functions 
+
+get_init_memory_state :: MemoryState
+get_init_memory_state = MemoryState 
+    { id_map = fromList [(Ident "print", 0), (Ident "readInt", 1)]
+    , loc_map =  fromList [(0, VFun $ Fun print_func), (1, VFun $ Fun read_int_func)]
+    }
 
 print_func :: [ValueUnion] -> DoubleMonad ValueUnion
 print_func [] = return NoValue
-print_func ((VInt i):ps) = do
+print_func ((VInt i):ps) = do       -- TODO add error when #args is wrong
     io $ print i
     return NoValue
 
--- TODO read 
+read_int_func :: [ValueUnion] -> DoubleMonad ValueUnion
+read_int_func [] = do
+    line <- io $ getLine
+    let int = (read line)::Integer -- TODO add error when can't parse
+    return $ VInt int
+
+-- TODO add read string when string will be a legal type
