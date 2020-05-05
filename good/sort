@@ -1,0 +1,46 @@
+int[] arr; 
+
+void init_arr(int n) {
+	for (int i = 0; i < n; i = i + 1) {
+		arr[i] = n - i;
+	} 
+}
+
+// Bubble sort
+void sort(int n) {
+	int swap;
+
+	for (int i = 0; i != n; i = i + 1) {
+    	for (int j = 0; j != n - i; j = j + 1) {
+			if (arr[j] > arr[j + 1]) {
+				swap = arr[j];
+				arr[j] = arr[j + 1];
+				arr[j + 1] = swap;
+			}
+    	}
+  	}
+}
+
+int main() {
+	int n = 10;
+	init_arr(n);
+
+	int arr_reads, arr_writes, comparisons;
+
+	count arr read_cost 1 with arr_reads;
+	count arr write_cost 1 with arr_writes; 
+	count < cost 1 with comparisons;
+
+	sort(n);
+
+	// Powinno wypisać liczbę dostępów do tablicy arr
+	print(arr_reads);
+
+	// Powinno wypisać liczbę zapisów do tablicy arr
+	print(arr_writes);
+
+	// Powinno wypisać liczbę porównań
+	print(comparisons);
+
+	return 0;
+}
