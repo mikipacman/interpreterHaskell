@@ -3,35 +3,48 @@ import Data.Map (Map, insert, (!), empty, fromList)
 import AbsGramatyka
 import ProgramTypes
 import Control.Monad.State
+import Control.Monad.Reader
 
 -- SEMANTIC FUNCTIONS --
 
 
-semD :: Decl -> DoubleMonad ()
+semManyD :: [Decl] -> DoubleMonad Env
+semManyD [] = ask
+semManyD (d:ds) = do
+    env <- semD d
+    env2 <- local (const env) $ semManyD ds
+    return env2
+
+
+semD :: Decl -> DoubleMonad Env
 semD decl = case decl of
-    FDecl t i p s e -> do
-        let new_func val_list = do  -- TODO add recursion and passing arguments
+    FDecl t i p d s e -> do
+        env <- ask
+        let new_func val_list = do
             let decl_list = map mapToDecl $ zip p val_list
-            semB $ Block $ map (\x -> VDecStmt x) decl_list  
-            semB $ Block s
-            semE e
-        setNewValue i (VFun (Fun new_func))
-        return ()
-    VDecl t [] -> return ()
+            env2 <- local (const env) $ semManyD decl_list   -- set params
+            env3 <- local (const env2) $ setNewValue i (VFun (Fun new_func)) -- recursion 
+            env4 <- local (const env3) $ semManyD d          -- init declared vars
+            local (const env4) $ semB $ Block s
+            local (const env4) $ semE e
+        new_env <- setNewValue i (VFun (Fun new_func))
+        return new_env
+    VDecl t [] -> ask
     VDecl t (v:vs) -> do
-        case t of
-            IntT -> case v of
-                NoInit i -> setNewValue i (VInt 0)
-                Init i e -> do
-                    val <- semE e
-                    setNewValue i val
-            BoolT -> case v of
-                NoInit i -> setNewValue i (VBool False)
-                Init i e -> do
-                    val <- semE e
-                    setNewValue i val
-            otherwise -> return () -- TODO Add more types and error handling (if needed)
-        semD $ VDecl t vs 
+        env <- case t of
+                IntT -> case v of
+                    NoInit i -> do
+                        setNewValue i (VInt 0)
+                    Init i e -> do
+                        val <- semE e
+                        setNewValue i val
+                BoolT -> case v of
+                    NoInit i -> setNewValue i (VBool False)
+                    Init i e -> do
+                        val <- semE e
+                        setNewValue i val
+                otherwise -> ask -- TODO Add more types and error handling (if needed)
+        local (const env) $ semD $ VDecl t vs 
 
 semB :: Block -> DoubleMonad ()
 semB (Block []) = return ()
@@ -63,9 +76,9 @@ semS stmt = case stmt of
                     else return ()
         in loop () 
     ForStmt d es as b -> do 
-        semD d
+        env <- semD d
         let step = Block $ map (\x -> AsStmt x) as
-        loop step
+        local (const env) $ loop step
         where 
             loop step = do
                     vs <- semManyE es
@@ -76,11 +89,9 @@ semS stmt = case stmt of
                         semB step
                         loop step
                     else return ()
-
     AsStmt (VarAs i e) -> do
         val <- semE e
         setValue i val
-    VDecStmt d -> semD d
     ExprStmt e -> do
         semE e
         return ()
@@ -165,14 +176,15 @@ semE exp = case exp of
 
 semP :: Program -> DoubleMonad MemoryState
 semP (Program (d:ds)) = do
-    semD d
-    semP (Program ds)
+    env <- semD d
+    local (const env) $ semP (Program ds)
 semP (Program []) = do
     (VFun (Fun main)) <- getValue (Ident "main")
-    main []
+    env <- ask
+    local (const env) $ main []
     state <- get
     return state
 
 
 runTree :: Program -> IO MemoryState
-runTree p = evalStateT (semP p) get_init_memory_state
+runTree p = runReaderT (evalStateT (semP p) get_init_memory_state) get_init_env

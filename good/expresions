@@ -1,14 +1,31 @@
-int silnia(int n) {
-	print(n + 10);
+int a = 3;
 
-	return 0;
+int f(int a) {
+	int ret;
+
+	if (a == 0) {
+		ret = 1;
+	} else {
+		ret = a * f(a - 1);
+	}
+
+	return ret;
 }
 
+int g(int r) {
+	return a;
+}
+
+
+
 int main () {
-	int m = readInt();
+	int a;
+
+	a = 5;
 	
-	silnia(1);
-	silnia(m);
+	print(a);
+	print(f(5));
+	print(g(2));
 
 	return 0;
 }

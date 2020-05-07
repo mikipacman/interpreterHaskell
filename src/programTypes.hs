@@ -1,11 +1,12 @@
 module ProgramTypes where
 import AbsGramatyka
-import Data.Map (Map, insert, (!), empty, fromList, size)
+import Data.Map (Map, insert, (!), empty, fromList, size, adjust)
 import Control.Monad.State
+import Control.Monad.Reader
 
 -- Types
 
-type DoubleMonad a = StateT MemoryState IO a
+type DoubleMonad a = StateT MemoryState (ReaderT Env IO) a
 
 data ValueUnion = VInt Integer | VBool Bool | VFun Fun | NoValue
     deriving (Show)
@@ -15,53 +16,43 @@ instance Show Fun where
     show f = "function"
 
 type Location = Integer
-
-data MemoryState = MemoryState 
-    { id_map :: Map Ident Location
-    , loc_map :: Map Location ValueUnion
-    }   
-    deriving (Show)
-
+type Env = Map Ident Location
+type MemoryState = Map Location ValueUnion
 
 -- Helper functions
 
 io :: IO a -> DoubleMonad a
-io = lift
+io = lift . lift
+
+reader :: ReaderT Env IO a -> DoubleMonad a
+reader = lift
 
 newLoc :: DoubleMonad Location
 newLoc = do
-    ms <- get
-    let m = id_map ms
-    return (toInteger $ size m)
+    mem <- get
+    return (toInteger $ size mem)
 
 getValue :: Ident -> DoubleMonad ValueUnion
 getValue i = do
-    state <- get
-    let id_m = id_map state
-    let loc_m = loc_map state
-    return (loc_m ! (id_m ! i))
+    mem <- get
+    env <- ask
+    return (mem ! (env ! i))
 
-setNewValue :: Ident -> ValueUnion -> DoubleMonad ()
+setNewValue :: Ident -> ValueUnion -> DoubleMonad Env
 setNewValue i v = do
-    state <- get
+    mem <- get
+    env <- ask
     l <- newLoc
-    let id_m = id_map state
-    let loc_m = loc_map state
-    put (state 
-        { id_map = insert i l id_m
-        , loc_map = insert l v loc_m 
-        })
-    return ()
+    put $ insert l v mem
+    let new_env = insert i l env
+    return new_env
 
 setValue :: Ident -> ValueUnion -> DoubleMonad ()
 setValue i v = do
-    state <- get
-    let id_m = id_map state
-    let loc_m = loc_map state
-    let l = id_m ! i
-    put (state 
-        { loc_map = insert l v loc_m 
-        })
+    mem <- get
+    env <- ask
+    let l = env ! i
+    put $ adjust (const v) l mem
     return ()
 
 
@@ -75,10 +66,10 @@ mapToDecl (FDItem t i, VBool v) = case v of
 -- Built in functions 
 
 get_init_memory_state :: MemoryState
-get_init_memory_state = MemoryState 
-    { id_map = fromList [(Ident "print", 0), (Ident "readInt", 1)]
-    , loc_map =  fromList [(0, VFun $ Fun print_func), (1, VFun $ Fun read_int_func)]
-    }
+get_init_memory_state = fromList [(0, VFun $ Fun print_func), (1, VFun $ Fun read_int_func)]
+
+get_init_env :: Env
+get_init_env = fromList [(Ident "print", 0), (Ident "readInt", 1)]
 
 print_func :: [ValueUnion] -> DoubleMonad ValueUnion
 print_func [] = return NoValue

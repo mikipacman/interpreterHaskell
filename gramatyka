@@ -3,8 +3,8 @@
 entrypoints Program ;
 Program.    Program ::= [Decl] ;
 
-VDecl.      Decl ::= Type [VarDeclItem] ;
-FDecl.      Decl ::= Type Ident "(" [FuncDeclItem] ")" "{" [Stmt] "return" Expr ";" "}" ;
+VDecl.      Decl ::= Type [VarDeclItem] ";" ;
+FDecl.      Decl ::= Type Ident "(" [FuncDeclItem] ")" "{" [Decl] [Stmt] "return" Expr ";" "}" ;
 separator   Decl "" ; 
 
 NoInit.     VarDeclItem ::= Ident ; 
@@ -24,9 +24,8 @@ EmptyStmt.  Stmt ::= ";" ;
 IfStmt.     Stmt ::= "if" "(" Expr ")" Block ;
 IfElseStmt. Stmt ::= "if" "(" Expr ")" Block "else" Block ;
 WhileStmt.  Stmt ::= "while" "(" Expr ")" Block ;
-ForStmt.    Stmt ::= "for" "(" Decl ";" [Expr] ";" [Assign] ")" Block ;
+ForStmt.    Stmt ::= "for" "(" Decl [Expr] ";" [Assign] ")" Block ;
 AsStmt.     Stmt ::= Assign ";" ;
-VDecStmt.   Stmt ::= Decl ";" ;
 ExprStmt.   Stmt ::= Expr ";" ;
 SCostStmt.  Stmt ::= CountCost ";" ;
 separator   Stmt "" ;
