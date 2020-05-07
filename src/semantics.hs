@@ -4,6 +4,7 @@ import AbsGramatyka
 import ProgramTypes
 import Control.Monad.State
 import Control.Monad.Reader
+import Control.Monad.Except
 
 -- SEMANTIC FUNCTIONS --
 
@@ -131,13 +132,15 @@ semE exp = case exp of
         (VBool val) <- semE e
         return $ VBool (not val)
     EMul e1 op e2 -> do
-        let f = case op of
-                Mul -> (*)
-                Div -> div
-                Mod -> mod
         (VInt v1) <- semE e1
         (VInt v2) <- semE e2
-        return $ VInt $ f v1 v2 
+        let f = case op of
+                Mul -> (*)
+                Div -> div 
+                Mod -> mod
+        if op == Div && v2 == 0
+        then throwError "Divide by zero!"
+        else return $ VInt $ f v1 v2 
     EAdd e1 op e2 -> do
         let f = case op of
                 Plus -> (+)
@@ -186,5 +189,11 @@ semP (Program []) = do
     return state
 
 
-runTree :: Program -> IO MemoryState
-runTree p = runReaderT (evalStateT (semP p) get_init_memory_state) get_init_env
+runTree :: Program -> IO ()
+runTree p = do 
+    r <- runExceptT (runReaderT (evalStateT (semP p) get_init_memory_state) get_init_env)
+    reportResult r
+
+reportResult :: Either String MemoryState -> IO ()
+reportResult (Right mem) = putStrLn $ show mem
+reportResult (Left e) = putStrLn ("Exception occured: " ++ (show e))

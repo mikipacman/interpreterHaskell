@@ -21,7 +21,7 @@ int g(int r) {
 int main () {
 	int a;
 
-	a = 5;
+	a = 1 / 1;
 	
 	print(a);
 	print(f(5));

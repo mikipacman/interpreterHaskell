@@ -3,10 +3,10 @@ import AbsGramatyka
 import Data.Map (Map, insert, (!), empty, fromList, size, adjust)
 import Control.Monad.State
 import Control.Monad.Reader
-
+import Control.Monad.Except
 -- Types
 
-type DoubleMonad a = StateT MemoryState (ReaderT Env IO) a
+type DoubleMonad a = StateT MemoryState (ReaderT Env (ExceptT String IO)) a
 
 data ValueUnion = VInt Integer | VBool Bool | VFun Fun | NoValue
     deriving (Show)
@@ -22,10 +22,7 @@ type MemoryState = Map Location ValueUnion
 -- Helper functions
 
 io :: IO a -> DoubleMonad a
-io = lift . lift
-
-reader :: ReaderT Env IO a -> DoubleMonad a
-reader = lift
+io = lift . lift . lift
 
 newLoc :: DoubleMonad Location
 newLoc = do

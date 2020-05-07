@@ -41,8 +41,6 @@ run v p s = let ts = myLLexer s in case p ts of
 
         res <- runTree tree
 
-        putStrV v "\n[MemoryState after program execution]\n"
-        putStrV v $ show res
         exitSuccess
 
 
