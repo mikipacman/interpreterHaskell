@@ -3,21 +3,21 @@
 entrypoints Program ;
 Program.    Program ::= [Decl] ;
 
-VDecl.      Decl ::= Type [VarDeclItem] ";" ;
-FDecl.      Decl ::= Type Ident "(" [FuncDeclItem] ")" "{" [Decl] [Stmt] "return" Expr ";" "}" ;
+VDecl.      Decl ::= BasicType [VarDeclItem] ";" ;
+ADecl.	 	Decl ::= ArrType [VarDeclItem] ";" ;
+FDecl.      Decl ::= BasicType Ident "(" [FuncDeclItem] ")" "{" [Decl] [Stmt] "return" Expr ";" "}" ;
 separator   Decl "" ; 
 
 NoInit.     VarDeclItem ::= Ident ; 
 Init.       VarDeclItem ::= Ident "=" Expr ;
 separator   nonempty VarDeclItem "," ;
 
-FDItem.     FuncDeclItem ::= Type Ident ;
+FDItem.     FuncDeclItem ::= BasicType Ident ;
 separator   FuncDeclItem "," ;
 
 Block.      Block ::= "{" [Stmt] "}" ;
 
-VarAs.      Assign ::= Ident "=" Expr ;
-ArrAs.      Assign ::= Ident "[" Expr "]" "=" Expr ;  
+VarAs.      Assign ::= Ident [Acc] "=" Expr ;
 separator   Assign "," ;
 
 EmptyStmt.  Stmt ::= ";" ;
@@ -30,25 +30,25 @@ ExprStmt.   Stmt ::= Expr ";" ;
 SCostStmt.  Stmt ::= CountCost ";" ;
 separator   Stmt "" ;
 
-IntT.       Type ::= "int" ;
-StringT.    Type ::= "string" ;
-BoolT.      Type ::= "bool" ;
-VoidT.      Type ::= "void" ;
-IntArrT.    Type ::= "int[]" ;
-StringArrT. Type ::= "string[]" ;
-BoolArrT.   Type ::= "bool[]" ;
+IntT.       BasicType ::= "int" ;
+StringT.    BasicType ::= "string" ;
+BoolT.      BasicType ::= "bool" ;
+
+ArrT.		ArrType ::= BasicType [Acc] ;
 
 IntL.       Literal ::= Integer ;
 StringL.    Literal ::= String ;
 TrueL.      Literal ::= "true" ; 
 FalseL.     Literal ::= "false" ;
 
-ExprVar.   	Expr6 ::= Ident ;
+Acc. 		Acc ::= "[" Expr "]" ;
+separator 	Acc "" ;
+
 ExprLit.   	Expr6 ::= Literal ;
 ExprGC.    	Expr6 ::= GetCost ;
 ExprBr.    	Expr6 ::= "(" Expr ")" ;
 ExprCall.  	Expr6 ::= Ident "(" [Expr] ")" ;
-ExprAcc.   	Expr6 ::= Ident "[" Expr "]" ;
+ExprAcc.   	Expr6 ::= Ident [Acc] ;
 Neg.       	Expr5 ::= "-" Expr6 ;
 Not.       	Expr5 ::= "!" Expr6 ;
 EMul.      	Expr4 ::= Expr4 MulOp Expr5 ;

@@ -3,7 +3,7 @@ Posiada:
 	- 3 wbudowane typy (int, bool, string)
 	- standardową arytmetykę, porównania
 	- zmienne i standardowe operacje na nich
-	- tablice jednowymiarowe dla 3 podstawowych typów
+	- tablice wielowymiarowe dla 3 podstawowych typów
 	- for, if, while
 	- funkcje, rekurencje
 	- obsługa błędów wykonania (wypisuje odpowiedni komunikat o błędzie)
@@ -11,10 +11,10 @@ Posiada:
 	- słowo kluczone "count"
 
 oraz wbudowane funkcje:
-len() - dla tablicy
-print()
+printStr()
+printInt()
 readInt() 
-readString() 
+readStr() 
 
 
 Słowo kluczowe "count" umożliwia aktualizacje licznika przy każdej operacji

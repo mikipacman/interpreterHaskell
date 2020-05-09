@@ -1,5 +1,5 @@
 module Semantics where
-import Data.Map (Map, insert, (!), empty, fromList)
+import Data.Map (Map, insert, (!), empty, fromList, member)
 import AbsGramatyka
 import ProgramTypes
 import Control.Monad.State
@@ -22,30 +22,66 @@ semD decl = case decl of
     FDecl t i p d s e -> do
         env <- ask
         let new_func val_list = do
-            let decl_list = map mapToDecl $ zip p val_list
-            env2 <- local (const env) $ semManyD decl_list   -- set params
-            env3 <- local (const env2) $ setNewValue i (VFun (Fun new_func)) -- recursion 
-            env4 <- local (const env3) $ semManyD d          -- init declared vars
-            local (const env4) $ semB $ Block s
-            local (const env4) $ semE e
+            if (length p) == (length val_list)
+            then do
+                let decl_list = map mapToDecl $ zip p val_list
+                env2 <- local (const env) $ semManyD decl_list   -- set params
+                env3 <- local (const env2) $ setNewValue i (VFun (Fun new_func)) -- recursion 
+                env4 <- local (const env3) $ semManyD d          -- init declared vars
+                local (const env4) $ semB $ Block s
+                local (const env4) $ semE e
+            else do
+                let (Ident fun_name) = i
+                throwError $ "Wrong number of arguments in " ++ fun_name ++ " call!"
         new_env <- setNewValue i (VFun (Fun new_func))
         return new_env
     VDecl t [] -> ask
     VDecl t (v:vs) -> do
         env <- case t of
-                IntT -> case v of
-                    NoInit i -> do
-                        setNewValue i (VInt 0)
-                    Init i e -> do
-                        val <- semE e
-                        setNewValue i val
-                BoolT -> case v of
-                    NoInit i -> setNewValue i (VBool False)
-                    Init i e -> do
-                        val <- semE e
-                        setNewValue i val
-                otherwise -> ask -- TODO Add more types and error handling (if needed)
+            IntT -> case v of
+                NoInit i -> do
+                    setNewValue i (VInt 0)
+                Init i e -> do
+                    val <- semE e
+                    setNewValue i val
+            BoolT -> case v of
+                NoInit i -> setNewValue i (VBool False)
+                Init i e -> do
+                    val <- semE e
+                    setNewValue i val
+            StringT -> case v of 
+                NoInit i -> setNewValue i (VStr "")
+                Init i e -> do
+                    val <- semE e
+                    setNewValue i val
         local (const env) $ semD $ VDecl t vs 
+    ADecl t [] -> ask
+    ADecl t (v:vs) -> do
+        env <- case t of 
+            (ArrT b []) -> case v of
+                Init i e -> throwError "Initialization of arrays is not supported yet."
+                NoInit i -> do
+                    semD $ VDecl b [NoInit i]
+            (ArrT b ((Acc e1):as)) -> case v of
+                Init i e -> throwError "Initialization of arrays is not supported yet."
+                NoInit i -> do
+                    (VInt v) <- semE e1
+                    let v_int = fromInteger v
+                    arr <- mapType i (replicate v_int $ ArrT b as)
+                    let m = zip [0..] arr
+                    setNewValue i (VArr $ fromList m)
+        local (const env) $ semD $ ADecl t vs 
+
+
+mapType :: Ident -> [ArrType] -> DoubleMonad [Location]     -- TODO make it prettier
+mapType i [] = return []
+mapType i (t:ts) = do
+    let decl = ADecl t [NoInit i]
+    env <- semD decl
+    l <- local (const env) $ getLoc i
+    ls <- mapType i ts
+    return ([l] ++ ls)
+
 
 semB :: Block -> DoubleMonad ()
 semB (Block []) = return ()
@@ -90,9 +126,12 @@ semS stmt = case stmt of
                         semB step
                         loop step
                     else return ()
-    AsStmt (VarAs i e) -> do
-        val <- semE e
-        setValue i val
+    AsStmt a -> case a of
+        (VarAs i a e) -> do
+            v <- semE e
+            l <- getLoc i
+            l2 <- getArrLoc l a
+            setLoc l2 v
     ExprStmt e -> do
         semE e
         return ()
@@ -109,11 +148,10 @@ semManyE (e:es) = do
 
 semE :: Expr -> DoubleMonad ValueUnion
 semE exp = case exp of
-    ExprVar i -> getValue i
     ExprLit l -> do 
         case l of 
             IntL i -> return (VInt i)
-            -- StringL s -> return (VStr s) -- TODO Add string type
+            StringL s -> return (VStr s)
             TrueL -> return (VBool True)
             FalseL -> return (VBool False)
     ExprGC gc -> return (VInt 0)    -- TODO
@@ -124,7 +162,11 @@ semE exp = case exp of
         (VFun (Fun f)) <- getValue i
         vs <- semManyE es
         f vs
-    ExprAcc i e -> return (VInt 0) -- TODO when arrays are ready
+    ExprAcc i a -> do
+        l <- getLoc i
+        l2 <- getArrLoc l a
+        v <- getLocValue l2
+        return v
     Neg e -> do
         (VInt val) <- semE e
         return $ VInt (-val)
@@ -195,5 +237,18 @@ runTree p = do
     reportResult r
 
 reportResult :: Either String MemoryState -> IO ()
-reportResult (Right mem) = putStrLn $ show mem
+reportResult (Right mem) = putStrLn ("[Success]\n\n" ++ (show mem))
 reportResult (Left e) = putStrLn ("Exception occured: " ++ (show e))
+
+
+getArrLoc :: Location -> [Acc] -> DoubleMonad Location
+getArrLoc l [] = return l
+getArrLoc l (a:ac) = do
+    (VArr m) <- getLocValue l
+    let (Acc e) = a
+    (VInt v) <- semE e
+    l2 <- if member v m 
+            then return $ m ! v
+            else throwError "Index out of bound!"
+    l3 <- getArrLoc l2 ac
+    return l3

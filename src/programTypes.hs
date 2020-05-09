@@ -1,14 +1,20 @@
 module ProgramTypes where
 import AbsGramatyka
-import Data.Map (Map, insert, (!), empty, fromList, size, adjust)
+import Data.Map (Map, insert, (!), empty, fromList, size, adjust, member)
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
+
 -- Types
 
 type DoubleMonad a = StateT MemoryState (ReaderT Env (ExceptT String IO)) a
 
-data ValueUnion = VInt Integer | VBool Bool | VFun Fun | NoValue
+data ValueUnion = VInt Integer 
+                | VBool Bool 
+                | VStr String 
+                | VFun Fun 
+                | VArr (Map Integer Location)
+                | NoValue
     deriving (Show)
 
 newtype Fun = Fun ([ValueUnion] -> DoubleMonad ValueUnion)
@@ -18,6 +24,13 @@ instance Show Fun where
 type Location = Integer
 type Env = Map Ident Location
 type MemoryState = Map Location ValueUnion
+
+type Cost = Integer
+type Holder = Location
+
+type ReadCost = Map Location (Cost, Holder) 
+type WriteCost = Map Location (Cost, Holder) 
+type OpCost = Map Location (Cost, Holder) 
 
 -- Helper functions
 
@@ -31,9 +44,21 @@ newLoc = do
 
 getValue :: Ident -> DoubleMonad ValueUnion
 getValue i = do
-    mem <- get
+    l <- getLoc i
+    v <- getLocValue l
+    return v
+
+getLoc :: Ident -> DoubleMonad Location
+getLoc i = do
     env <- ask
-    return (mem ! (env ! i))
+    if member i env
+    then return $ env ! i
+    else throwError "Accessing undefined variable of function!"
+
+getLocValue :: Location -> DoubleMonad ValueUnion
+getLocValue l = do
+    mem <- get
+    return $ mem ! l
 
 setNewValue :: Ident -> ValueUnion -> DoubleMonad Env
 setNewValue i v = do
@@ -46,12 +71,16 @@ setNewValue i v = do
 
 setValue :: Ident -> ValueUnion -> DoubleMonad ()
 setValue i v = do
-    mem <- get
     env <- ask
     let l = env ! i
-    put $ adjust (const v) l mem
+    setLoc l v
     return ()
 
+setLoc :: Location -> ValueUnion -> DoubleMonad ()
+setLoc l v = do
+    mem <- get
+    put $ adjust (const v) l mem
+    return ()    
 
 mapToDecl :: (FuncDeclItem, ValueUnion) -> Decl
 mapToDecl (FDItem t i, VInt v) = VDecl t [Init i (ExprLit (IntL v))] 
@@ -60,24 +89,56 @@ mapToDecl (FDItem t i, VBool v) = case v of
     False -> VDecl t [Init i (ExprLit FalseL)] 
 
 
+
 -- Built in functions 
 
 get_init_memory_state :: MemoryState
-get_init_memory_state = fromList [(0, VFun $ Fun print_func), (1, VFun $ Fun read_int_func)]
+get_init_memory_state = fromList [(0, VFun $ Fun print_int_func)
+    ,(1, VFun $ Fun print_str_func)
+    ,(2, VFun $ Fun read_int_func)
+    ,(3, VFun $ Fun read_str_func)]
 
 get_init_env :: Env
-get_init_env = fromList [(Ident "print", 0), (Ident "readInt", 1)]
+get_init_env = fromList [(Ident "printInt", 0)
+    ,(Ident "printStr", 1)
+    ,(Ident "readInt", 2)
+    ,(Ident "readStr", 3)]
 
-print_func :: [ValueUnion] -> DoubleMonad ValueUnion
-print_func [] = return NoValue
-print_func ((VInt i):ps) = do       -- TODO add error when #args is wrong
-    io $ print i
-    return NoValue
+print_int_func :: [ValueUnion] -> DoubleMonad ValueUnion
+print_int_func args = do
+    if length args == 1
+    then do
+        let (VInt i) = args !! 0
+        io $ print i
+        return NoValue
+    else throwError $ "Wrong number of arguments in printInt call!"
+
+
+print_str_func :: [ValueUnion] -> DoubleMonad ValueUnion
+print_str_func args = do
+    if length args == 1
+    then do
+        let (VStr i) = args !! 0
+        io $ putStrLn i
+        return NoValue
+    else throwError $ "Wrong number of arguments in printStr call!"
+
 
 read_int_func :: [ValueUnion] -> DoubleMonad ValueUnion
-read_int_func [] = do
-    line <- io $ getLine
-    let int = (read line)::Integer -- TODO add error when can't parse
-    return $ VInt int
+read_int_func args = do
+    if length args == 0
+    then do
+        line <- io $ getLine
+        case (reads line) :: [(Integer, String)] of
+            [(int, "")] -> return $ VInt (int :: Integer)
+            otherwise   -> throwError $ "That is not a number!"
+    else throwError $ "Wrong number of arguments in readInt call!"
 
--- TODO add read string when string will be a legal type
+
+read_str_func :: [ValueUnion] -> DoubleMonad ValueUnion
+read_str_func args = do
+    if length args == 0
+    then do
+        line <- io $ getLine
+        return (VStr line)
+    else throwError $ "Wrong number of arguments in readInt call!"
