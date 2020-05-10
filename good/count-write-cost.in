@@ -1,0 +1,15 @@
+int main() {
+	int a, b;
+	count a write_cost 1 with b;
+	count b write_cost 1 with a;
+
+	printInt(a);
+	printInt(b);
+
+	a = b;
+
+	printInt(a);
+	printInt(b);
+
+	return 0;
+}

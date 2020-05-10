@@ -1,0 +1,16 @@
+int main() {
+	int a, b;
+	int c;
+	count a read_cost 1 with b;
+	count b read_cost 1 with a;
+
+	printInt(a);
+	printInt(b);
+
+	c = b + b;
+
+	printInt(a);
+	printInt(b);
+
+	return 0;
+}

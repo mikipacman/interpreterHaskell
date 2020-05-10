@@ -1,0 +1,27 @@
+string get_name() {
+	printStr("enter your name:");
+
+	return readStr();
+}
+
+int get_age() {
+	printStr("enter your age:");
+
+	return readInt();
+}
+
+int main() {
+	string name = get_name();
+
+	// Kiedy string nie sparsuje się na inta zostanie rzucony wyjatek
+	int age = get_age();
+
+
+	printStr("\nHi");
+	printStr(name);
+
+	printStr("Your age is");
+	printInt(age);
+
+	return 0;
+}

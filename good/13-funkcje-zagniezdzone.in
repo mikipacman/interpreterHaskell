@@ -1,0 +1,27 @@
+int n = 7;
+
+int f(int n) {
+	printStr("hello from first f");
+	return n * n;
+}
+
+string g() {
+	return "JPP";
+}
+
+int main() {
+	int n = 10;
+	int f(int n) {
+		printStr("hello from second f");
+		return n * n + n;
+	}
+
+	int g(int a) {
+		return 42 * a;
+	}
+
+	printInt(f(n));
+	printInt(g(n));
+
+	return 0;
+}

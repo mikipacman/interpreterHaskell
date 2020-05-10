@@ -1,0 +1,19 @@
+string a() {
+	return "haskell";
+}
+
+bool b() {
+	return true;
+}
+
+int c(int n) {
+	return -n;
+}
+
+int main() {
+	if (b() && c(100) < 0) {
+		printStr(a());
+	}
+
+	return 0;
+}

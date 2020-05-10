@@ -12,14 +12,12 @@ import PrintGramatyka
 import AbsGramatyka
 
 import ErrM
-
 import Semantics
 
 type ParseFun a = [Token] -> Err a
+type Verbosity = Int
 
 myLLexer = myLexer
-
-type Verbosity = Int
 
 putStrV :: Verbosity -> String -> IO ()
 putStrV v s = when (v > 1) $ putStrLn s
@@ -27,28 +25,24 @@ putStrV v s = when (v > 1) $ putStrLn s
 runFile :: Verbosity -> ParseFun Program -> FilePath -> IO ()
 runFile v p f = readFile f >>= run v p
 
-run ::  Verbosity -> ParseFun Program -> String -> IO ()
+run :: Verbosity -> ParseFun Program -> String -> IO ()
 run v p s = let ts = myLLexer s in case p ts of
     Bad s    -> do 
-        putStrLn "\nParse              Failed...\n"
+        putStrLn "\nParse Failed...\n"
         putStrV v "Tokens:"
         putStrV v $ show ts
         putStrLn s
         exitFailure
     Ok  tree -> do 
         showTree v tree
-        putStrV v "\n[Program is running]\n"
-
-        res <- runTree tree
-
+        runTree v tree
         exitSuccess
 
 
-showTree :: (Show a, Print a) => Int -> a -> IO ()
-showTree v tree
- = do
-            putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree
-            putStrV v $ "\n[Linearized tree]\n\n" ++ printTree tree
+showTree :: (Show a, Print a) => Verbosity -> a -> IO ()
+showTree v tree = do
+    putStrV v $ "\n[Abstract Syntax]\n\n" ++ show tree
+    putStrV v $ "\n[Linearized tree]\n\n" ++ printTree tree
 
 usage :: IO ()
 usage = do

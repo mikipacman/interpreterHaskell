@@ -1,4 +1,4 @@
-int n = 1;
+int n = 10;
 int[n] arr; 
 
 int init_arr(int n) {
@@ -37,63 +37,40 @@ int print_arr() {
 int main() {
 
 	int arr_reads, arr_writes, comparisons;
-	int a, b;
 
-
+	// Tablica malejąca
 	init_arr(n);
-		printStr("BEFORE");
-		print_arr();
+	printStr("BEFORE");
+	print_arr();
 
-			printStr("w cost");
-			printInt(get write_cost arr);
-
-			printStr("r cost");
-			printInt(get read_cost arr);
-
-			printStr("c cost");
-			printInt(get cost <);
-
+	// Będziemy śledzić liczbe porównać, zapisów i odczytów
 	count arr read_cost 1 with arr_reads;
 	count arr write_cost 1 with arr_writes;
 	count < cost 1 with comparisons;
+	count > cost 1 with comparisons;
 	
-			printStr("w cost");
-			printInt(get write_cost arr);
-
-			printStr("r cost");
-			printInt(get read_cost arr);
-
-			printStr("c cost");
-			printInt(get cost <);
-
+	// Sortujemy
 	sort(n);
 
+	// Przestajemy śledzić
 	count arr read_cost 0 with arr_reads;
 	count arr write_cost 0 with arr_writes;
 	count < cost 0 with comparisons;
+	count > cost 0 with comparisons;
 
 
-			printStr("w cost");
-			printInt(get write_cost arr);
+	// Pokazujemy wyniki
+	printStr("AFTER");
+	print_arr(); 
 
-			printStr("r cost");
-			printInt(get read_cost arr);
-			
-			printStr("c cost");
-			printInt(get cost <);
+	printStr("Arr reads:");
+	printInt(arr_reads);
 
+	printStr("Arr writes:");
+	printInt(arr_writes);
 
-		printStr("AFTER");
-		print_arr(); 
-
-		printStr("Arr reads:");
-		printInt(arr_reads);
-
-		printStr("Arr writes:");
-		printInt(arr_writes);
-
-		printStr("Comprisons:");
-		printInt(comparisons);
+	printStr("Comprisons:");
+	printInt(comparisons);
 
 	return 0;
 }

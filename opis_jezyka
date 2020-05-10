@@ -69,3 +69,8 @@ kosztu dostępu do pamięci.
 Większy przykład znajduje się w pliku przyklad.
 
 # PATH=$PATH:$(stack path --compiler-bin)
+
+źródła
+https://drive.google.com/file/d/1NaPY7qIrj8rPdq1yTerSq6uJZAYjIKpT/view
+https://www.mimuw.edu.pl/~klin/sem19-20.html
+https://mmhaskell.com/monads/reader-writer

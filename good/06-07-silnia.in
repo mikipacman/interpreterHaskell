@@ -1,0 +1,17 @@
+int silnia(int n) {
+	int ret = 0;
+
+	if (n == 0) {
+		ret = 1;
+	} else {
+		ret = n * silnia(n - 1);
+	}
+
+	return ret;
+}
+
+int main() {
+	printInt(silnia(5));
+
+	return 0;
+}

@@ -1,0 +1,22 @@
+string a = "first";
+
+int f() {
+	printStr(a);
+
+	return 0;
+}
+
+string a = "second";
+
+int g() {
+	printStr(a);
+
+	return 0;
+}
+
+int main() {
+	f();
+	g();
+
+	return 0;
+}

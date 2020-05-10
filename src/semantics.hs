@@ -6,6 +6,21 @@ import StaticTyping
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
+import Control.Monad (when)
+
+
+
+runTree :: Int -> Program -> IO ()
+runTree v p = do
+    good <- verifyProgram v p
+    if good
+    then do
+        result <- runExceptT (runReaderT (evalStateT (semP p) get_init_memory_state) get_init_env)
+        case result of
+            (Right mem) -> when (v > 1) $ putStrLn ("\n[Memory]\n\n" ++ (show mem))
+            (Left e)    -> putStrLn ("Exception occured: " ++ e)
+    else return ()
+
 
 -- SEMANTIC FUNCTIONS --
 
@@ -247,7 +262,7 @@ semE exp = case exp of
                 Div -> div 
                 Mod -> mod
         if op == Div && v2 == 0
-        then throwError "Divide by zero!"
+        then throwError "Division by zero!"
         else return $ VInt $ f v1 v2 
     EAdd e1 op e2 -> do
         updateOpCost (AOp op)
@@ -313,21 +328,6 @@ semP (Program []) = do
     local (const env) $ main []
     state <- get
     return state
-
-
-runTree :: Program -> IO ()
-runTree p = do
-    good <- verifyProgram p
-    if good
-    then do
-        putStrLn "Types are good!"
-        r <- runExceptT (runReaderT (evalStateT (semP p) get_init_memory_state) get_init_env)
-        reportResult r
-    else putStrLn "Types are not good!"
-
-reportResult :: Either String Memory -> IO ()
-reportResult (Right mem) = putStrLn ("[Success]\n\n" ++ (show mem))
-reportResult (Left e) = putStrLn ("Exception occured: " ++ (show e))
 
 
 getArrLoc :: Location -> [Acc] -> MyMonad Location

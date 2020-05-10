@@ -1,0 +1,12 @@
+int main() {
+	bool d = false;
+
+	d = 2 < 3;
+
+	if (d) {
+		printStr("hi!");
+		printInt(10 + 2 * 3);
+	} 
+
+	return 0;
+}

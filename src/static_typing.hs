@@ -3,7 +3,7 @@ import AbsGramatyka
 import Data.Map (Map, insert, (!), empty, fromList, member, adjust)
 import Control.Monad.Reader
 import Control.Monad.Except
-
+import Control.Monad (when)
 
 type TypeEnv = Map Ident Type
 
@@ -22,17 +22,23 @@ data FuncType = FunT BasicType [BasicType]
 type DoubleMonad a = ReaderT TypeEnv (ExceptT String IO) a
 
 
-verifyProgram :: Program -> IO Bool
-verifyProgram p = do
-    r <- runExceptT (runReaderT (checkProgram p) empty)
-    case r of
+verifyProgram :: Int -> Program -> IO Bool
+verifyProgram v p = do
+    result <- runExceptT (runReaderT (checkProgram p) get_built_in_type_env)
+    case result of
         (Right _) -> do
-            putStrLn "[Successful types]\n\n"
+            when (v > 1) $ putStrLn "[Static type checking succeeded]\n"
             return True
         (Left e) -> do
+            when (v > 1) $ putStrLn "[Static type checking failed]"
             putStrLn ("Error occured during types analysis: " ++ e)
             return False
 
+get_built_in_type_env :: TypeEnv
+get_built_in_type_env = fromList    [(Ident "printInt", FuncType $ FunT IntT [IntT])
+                                    ,(Ident "printStr", FuncType $ FunT IntT [StringT])
+                                    ,(Ident "readInt", FuncType $ FunT IntT [])
+                                    ,(Ident "readStr", FuncType $ FunT StringT [])]
 
 setType :: Ident -> Type -> DoubleMonad TypeEnv
 setType i t = do
@@ -56,7 +62,6 @@ assertTypeIdent i t s = do
     if t == realType
     then return ()
     else throwError s
-
 
 assertTypeExpr :: Expr -> Type -> String -> DoubleMonad ()
 assertTypeExpr e t s = do
@@ -211,7 +216,7 @@ checkDecl d = case d of
 
         if retType == (BasicType b)
         then setType i funcType
-        else throwError ("Type error in returin value in function " ++ show name)
+        else throwError ("Type error in return value in function " ++ show name)
 
 
 checkStmts :: [Stmt] -> DoubleMonad ()
@@ -261,8 +266,24 @@ checkStmt s = case s of
         return ()
     SCostStmt c -> case c of
         CRead i1 e i2 -> do
-        let (Ident name1) = i1
-        let (Ident name2) = i2
-        assertTypeIdent i1 (BasicType IntT) $ (show name1) ++ " in count statement should be integer"
-        assertTypeIdent i2 (BasicType IntT) $ (show name2) ++ " in count statement should be integer"
-        assertTypeExpr e (BasicType IntT) $ "Expression in count statement should be integer"
+            let (Ident name1) = i1
+            let (Ident name2) = i2
+            assertTypeIdent i2 (BasicType IntT) $ (show name2) ++ " in count statement should be integer"
+            assertTypeExpr e (BasicType IntT) $ "Expression in count statement should be integer"
+            t1 <- getType i1
+            case t1 of
+                FuncType f -> throwError $ (show name1) ++ " in count statement can't be function"
+                _ -> return ()
+        CWrite i1 e i2 -> do
+            let (Ident name1) = i1
+            let (Ident name2) = i2
+            assertTypeIdent i2 (BasicType IntT) $ (show name2) ++ " in count statement should be integer"
+            assertTypeExpr e (BasicType IntT) $ "Expression in count statement should be integer"
+            t1 <- getType i1
+            case t1 of
+                FuncType f -> throwError $ (show name1) ++ " in count statement can't be function"
+                _ -> return ()
+        COp op e i -> do
+            let (Ident name) = i
+            assertTypeExpr e (BasicType IntT) $ (show name) ++ " in count statement should be integer"
+            return ()

@@ -1,0 +1,29 @@
+string a = "global";
+
+int print_a() {
+	printStr(a);
+
+	return 0;
+}
+
+int print_another_a() {
+	string a = "in function";
+	printStr(a);
+
+	return 0;
+}
+
+int main() {
+	string a = "in main";
+
+	// Wypisuje "in main"
+	printStr(a);
+
+	// Wypisuje "global"
+	print_a();
+
+	// Wypisuje "in function"
+	print_another_a();
+
+	return 0;
+}

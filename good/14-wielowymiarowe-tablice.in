@@ -1,0 +1,17 @@
+int main() {
+	string[2][2] arr;
+
+	arr[0][0] = "zero zero";
+	arr[0][1] = "zero one";
+	arr[1][0] = "one zero";
+	arr[1][1] = "one one";
+
+	for (int i; i < 2; i = i + 1) {
+		for (int j; j < 2; j = j + 1) {
+			printStr(arr[i][j]);
+		}
+	}
+
+	return 0;
+
+}
