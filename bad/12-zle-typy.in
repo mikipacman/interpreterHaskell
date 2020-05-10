@@ -1,0 +1,17 @@
+int fib(int n) {
+	int ret;
+
+	if (n == 0 || n == 1) {
+		ret = 1;
+	} else {
+		ret = fib(n - 1) + fib(n - 2);
+	}
+
+	return ret;
+}
+
+int main() {
+	printInt(fib(6) + readStr());
+
+	return 0;
+}
