@@ -14,7 +14,6 @@ data ValueUnion = VInt Integer
                 | VStr String 
                 | VFun Fun 
                 | VArr (Map Integer Location)
-                | NoValue
     deriving (Show)
 
 newtype Fun = Fun ([ValueUnion] -> MyMonad ValueUnion)
@@ -102,7 +101,6 @@ mapToDecl (FDItem t i, VBool v) = case v of
     False -> VDecl t [Init i (ExprLit FalseL)] 
 
 
-
 -- Built in functions 
 
 get_init_memory_state :: Memory
@@ -128,7 +126,7 @@ print_int_func args = do
     then do
         let (VInt i) = args !! 0
         io $ print i
-        return NoValue
+        return (VInt 0)
     else throwError $ "Wrong number of arguments in printInt call!"
 
 
@@ -138,7 +136,7 @@ print_str_func args = do
     then do
         let (VStr i) = args !! 0
         io $ putStrLn i
-        return NoValue
+        return (VInt 0)
     else throwError $ "Wrong number of arguments in printStr call!"
 
 

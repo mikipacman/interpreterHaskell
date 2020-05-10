@@ -2,6 +2,7 @@ module Semantics where
 import Data.Map (Map, insert, (!), empty, fromList, member, adjust)
 import AbsGramatyka
 import ProgramTypes
+import StaticTyping
 import Control.Monad.State
 import Control.Monad.Reader
 import Control.Monad.Except
@@ -263,24 +264,30 @@ semE exp = case exp of
                 LessEq -> (<=)
                 Great -> (>)
                 GreatEq -> (>=)
-                Eq -> (==)
-                NotEq -> (/=) 
-        v1 <- semE e1               -- TODO this is absolutely disgusting, fix it somehow
-        let v11 = case v1 of
-                VInt i -> i
-                VBool True -> 1
-                VBool False -> 0
-        v2 <- semE e2
-        let v22 = case v2 of
-                VInt i -> i
-                VBool True -> 1
-                VBool False -> 0
-        return $ VBool $ f v11 v22
-    EAnd e1 e2 -> do
+        (VInt v1) <- semE e1
+        (VInt v2) <- semE e2
+        return $ VBool $ f v1 v2
+    EEq e1 op e2 -> do
+        updateOpCost (EOp op)
+        case op of
+            Eq -> do
+                v1 <- semE e1
+                v2 <- semE e2
+                case (v1, v2) of 
+                    (VInt int1, VInt int2) -> return $ VBool $ int1 == int2
+                    (VStr str1, VStr str2) -> return $ VBool $ str1 == str2
+                    (VBool b1, VBool b2) -> return $ VBool $ b1 == b2
+                    (_, _) -> return $ VBool False
+            NotEq -> do
+                (VBool b) <- semE $ EEq e1 Eq e2
+                return $ VBool $ not b
+    EAnd e1 op e2 -> do
+        updateOpCost (AndOp op)
         (VBool v1) <- semE e1
         (VBool v2) <- semE e2
         return $ VBool $ (&&) v1 v2
-    EOr e1 e2 -> do
+    EOr e1 op e2 -> do
+        updateOpCost (OrOp op)
         (VBool v1) <- semE e1
         (VBool v2) <- semE e2
         return $ VBool $ (||) v1 v2
@@ -309,9 +316,14 @@ semP (Program []) = do
 
 
 runTree :: Program -> IO ()
-runTree p = do 
-    r <- runExceptT (runReaderT (evalStateT (semP p) get_init_memory_state) get_init_env)
-    reportResult r
+runTree p = do
+    good <- verifyProgram p
+    if good
+    then do
+        putStrLn "Types are good!"
+        r <- runExceptT (runReaderT (evalStateT (semP p) get_init_memory_state) get_init_env)
+        reportResult r
+    else putStrLn "Types are not good!"
 
 reportResult :: Either String Memory -> IO ()
 reportResult (Right mem) = putStrLn ("[Success]\n\n" ++ (show mem))

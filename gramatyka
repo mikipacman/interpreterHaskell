@@ -44,24 +44,28 @@ FalseL.     Literal ::= "false" ;
 Acc. 		Acc ::= "[" Expr "]" ;
 separator 	Acc "" ;
 
-ExprLit.   	Expr6 ::= Literal ;
-ExprGC.    	Expr6 ::= GetCost ;
-ExprBr.    	Expr6 ::= "(" Expr ")" ;
-ExprCall.  	Expr6 ::= Ident "(" [Expr] ")" ;
-ExprAcc.   	Expr6 ::= Ident [Acc] ;
-Neg.       	Expr5 ::= "-" Expr6 ;
-Not.       	Expr5 ::= "!" Expr6 ;
-EMul.      	Expr4 ::= Expr4 MulOp Expr5 ;
-EAdd.      	Expr3 ::= Expr3 AddOp Expr4 ;
-ERel.      	Expr2 ::= Expr2 RelOp Expr3 ;
-EAnd.      	Expr1 ::= Expr2 "&&" Expr1 ;
-EOr.       	Expr ::= Expr1 "||" Expr ;
-coercions  	Expr 6 ;
+ExprLit.   	Expr7 ::= Literal ;
+ExprGC.    	Expr7 ::= GetCost ;
+ExprBr.    	Expr7 ::= "(" Expr ")" ;
+ExprCall.  	Expr7 ::= Ident "(" [Expr] ")" ;
+ExprAcc.   	Expr7 ::= Ident [Acc] ;
+Neg.       	Expr6 ::= "-" Expr7 ;
+Not.       	Expr6 ::= "!" Expr7 ;
+EMul.      	Expr5 ::= Expr6 MulOp Expr5 ;
+EAdd.      	Expr4 ::= Expr5 AddOp Expr4 ;
+ERel.      	Expr3 ::= Expr4 RelOp Expr3 ;
+EEq.      	Expr2 ::= Expr3 EqOp Expr2 ;
+EAnd.      	Expr1 ::= Expr2 AndOp Expr1 ;
+EOr.       	Expr ::= Expr1 OrOp Expr ;
+coercions  	Expr 7 ;
 separator  	Expr "," ;
 
 AOp.       	Op ::= AddOp ;
 MOp.       	Op ::= MulOp ;
 ROp.       	Op ::= RelOp ;
+EOp. 		Op ::= EqOp ;
+AndOp.		Op ::= AndOp ;
+OrOp.		Op ::= OrOp ;
 
 Plus.      	AddOp ::= "+" ;
 Minus.     	AddOp ::= "-" ;
@@ -72,8 +76,10 @@ Less.      	RelOp ::= "<" ;
 LessEq.    	RelOp ::= "<=" ;
 Great.     	RelOp ::= ">" ;
 GreatEq.   	RelOp ::= ">=" ;
-Eq.        	RelOp ::= "==" ;
-NotEq.     	RelOp ::= "!=" ;	
+Eq.        	EqOp  ::= "==" ;
+NotEq.     	EqOp  ::= "!=" ;	
+And. 		AndOp ::= "&&" ;
+Or.			OrOp  ::= "||" ;
 
 
 -- Nowości

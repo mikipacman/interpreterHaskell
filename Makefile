@@ -19,7 +19,7 @@ generate_grama:
 
 # Rules for interpreter
 interpret : generate_grama $(PARSER_FILES)
-	ghc -i$(SRC_FOLDER):$(GRAMA_FOLDER) --make $(SRC_FOLDER)/interpret.hs $(SRC_FOLDER)/programTypes.hs $(SRC_FOLDER)/semantics.hs $(PARSER_FILES) -o $@
+	ghc -i$(SRC_FOLDER):$(GRAMA_FOLDER) --make $(SRC_FOLDER)/interpret.hs $(SRC_FOLDER)/programTypes.hs $(SRC_FOLDER)/static_typing.hs $(SRC_FOLDER)/semantics.hs $(PARSER_FILES) -o $@
 
 # Rules for cleaning generated files.
 clean :
