@@ -1,5 +1,5 @@
 module Semantics where
-import Data.Map (Map, insert, (!), empty, fromList, member)
+import Data.Map (Map, insert, (!), empty, fromList, member, adjust)
 import AbsGramatyka
 import ProgramTypes
 import Control.Monad.State
@@ -9,7 +9,7 @@ import Control.Monad.Except
 -- SEMANTIC FUNCTIONS --
 
 
-semManyD :: [Decl] -> DoubleMonad Env
+semManyD :: [Decl] -> MyMonad Env
 semManyD [] = ask
 semManyD (d:ds) = do
     env <- semD d
@@ -17,7 +17,7 @@ semManyD (d:ds) = do
     return env2
 
 
-semD :: Decl -> DoubleMonad Env
+semD :: Decl -> MyMonad Env
 semD decl = case decl of
     FDecl t i p d s e -> do
         env <- ask
@@ -73,7 +73,7 @@ semD decl = case decl of
         local (const env) $ semD $ ADecl t vs 
 
 
-mapType :: Ident -> [ArrType] -> DoubleMonad [Location]     -- TODO make it prettier
+mapType :: Ident -> [ArrType] -> MyMonad [Location]     -- TODO make it prettier
 mapType i [] = return []
 mapType i (t:ts) = do
     let decl = ADecl t [NoInit i]
@@ -83,14 +83,14 @@ mapType i (t:ts) = do
     return ([l] ++ ls)
 
 
-semB :: Block -> DoubleMonad ()
+semB :: Block -> MyMonad ()
 semB (Block []) = return ()
 semB (Block (s:stmts)) = do
     semS s
     semB (Block stmts)
 
 
-semS :: Stmt -> DoubleMonad ()
+semS :: Stmt -> MyMonad ()
 semS stmt = case stmt of
     EmptyStmt -> return ()
     IfStmt e b -> do
@@ -132,13 +132,47 @@ semS stmt = case stmt of
             l <- getLoc i
             l2 <- getArrLoc l a
             setLoc l2 v
+
+             -- update cost
+            s <- get
+            let writeCostM = wc s
+            if member l writeCostM
+            then do
+                let (c, l1) = writeCostM ! l
+                (VInt v1) <- getLocValue l1
+                setLoc l1 (VInt $ c + v1)
+            else return ()
     ExprStmt e -> do
         semE e
         return ()
-    SCostStmt c -> return () -- TODO
+    SCostStmt c -> case c of
+        CRead i1 e i2 -> do
+            s <- get
+            let readCostM = rc s 
+            l1 <- getLoc i1
+            l2 <- getLoc i2
+            (VInt v) <- semE e
+            put ( s { rc = insert l1 (v, l2) readCostM } )
+            return ()
+        CWrite i1 e i2 -> do
+            s <- get
+            let writeCostM = wc s 
+            l1 <- getLoc i1
+            l2 <- getLoc i2
+            (VInt v) <- semE e
+            put ( s { wc = insert l1 (v, l2) writeCostM } )
+            return ()
+        COp o e i -> do
+            s <- get
+            let opCostM = oc s 
+            l <- getLoc i
+            (VInt v) <- semE e
+            put ( s { oc = insert o (v, l) opCostM } )
+            return ()
 
 
-semManyE :: [Expr] -> DoubleMonad [ValueUnion]
+
+semManyE :: [Expr] -> MyMonad [ValueUnion]      -- TODO refactor
 semManyE [] = return []
 semManyE (e:es) = do
     v <- semE e
@@ -146,7 +180,7 @@ semManyE (e:es) = do
     return (v:vs) 
 
 
-semE :: Expr -> DoubleMonad ValueUnion
+semE :: Expr -> MyMonad ValueUnion
 semE exp = case exp of
     ExprLit l -> do 
         case l of 
@@ -154,7 +188,27 @@ semE exp = case exp of
             StringL s -> return (VStr s)
             TrueL -> return (VBool True)
             FalseL -> return (VBool False)
-    ExprGC gc -> return (VInt 0)    -- TODO
+    ExprGC gc -> case gc of
+        GRead i -> do                           -- TODO refactor maybe?
+            s <- get
+            l <- getLoc i
+            let readCostM = rc s
+            if member l readCostM
+            then return $ VInt $ fst $ readCostM ! l
+            else return $ VInt 0
+        GWrite i -> do
+            s <- get
+            l <- getLoc i
+            let writeCostM = wc s
+            if member l writeCostM
+            then return $ VInt $ fst $ writeCostM ! l
+            else return $ VInt 0
+        GOpCost o -> do
+            s <- get
+            let opCostM = oc s
+            if member o opCostM
+            then return $ VInt $ fst $ opCostM ! o
+            else return $ VInt 0
     ExprBr e -> do
         val <- semE e
         return val
@@ -166,7 +220,17 @@ semE exp = case exp of
         l <- getLoc i
         l2 <- getArrLoc l a
         v <- getLocValue l2
-        return v
+
+        -- update cost
+        s <- get
+        let readCostM = rc s
+        if member l readCostM
+        then do
+            let (c, l1) = readCostM ! l
+            (VInt v1) <- getLocValue l1
+            setLoc l1 (VInt $ c + v1)
+            return v
+        else return v
     Neg e -> do
         (VInt val) <- semE e
         return $ VInt (-val)
@@ -174,6 +238,7 @@ semE exp = case exp of
         (VBool val) <- semE e
         return $ VBool (not val)
     EMul e1 op e2 -> do
+        updateOpCost (MOp op)
         (VInt v1) <- semE e1
         (VInt v2) <- semE e2
         let f = case op of
@@ -184,6 +249,7 @@ semE exp = case exp of
         then throwError "Divide by zero!"
         else return $ VInt $ f v1 v2 
     EAdd e1 op e2 -> do
+        updateOpCost (AOp op)
         let f = case op of
                 Plus -> (+)
                 Minus -> (-)
@@ -191,6 +257,7 @@ semE exp = case exp of
         (VInt v2) <- semE e2
         return $ VInt $ f v1 v2 
     ERel e1 op e2 -> do
+        updateOpCost (ROp op)
         let f = case op of
                 Less -> (<)
                 LessEq -> (<=)
@@ -218,8 +285,18 @@ semE exp = case exp of
         (VBool v2) <- semE e2
         return $ VBool $ (||) v1 v2
 
+updateOpCost :: Op -> MyMonad ()
+updateOpCost o = do
+    s <- get
+    let opCostM = oc s
+    if member o opCostM
+    then do
+        let (c, l) = opCostM ! o 
+        (VInt v) <- getLocValue l
+        setLoc l (VInt $ v + c)
+    else return ()
 
-semP :: Program -> DoubleMonad MemoryState
+semP :: Program -> MyMonad Memory
 semP (Program (d:ds)) = do
     env <- semD d
     local (const env) $ semP (Program ds)
@@ -236,12 +313,12 @@ runTree p = do
     r <- runExceptT (runReaderT (evalStateT (semP p) get_init_memory_state) get_init_env)
     reportResult r
 
-reportResult :: Either String MemoryState -> IO ()
+reportResult :: Either String Memory -> IO ()
 reportResult (Right mem) = putStrLn ("[Success]\n\n" ++ (show mem))
 reportResult (Left e) = putStrLn ("Exception occured: " ++ (show e))
 
 
-getArrLoc :: Location -> [Acc] -> DoubleMonad Location
+getArrLoc :: Location -> [Acc] -> MyMonad Location
 getArrLoc l [] = return l
 getArrLoc l (a:ac) = do
     (VArr m) <- getLocValue l

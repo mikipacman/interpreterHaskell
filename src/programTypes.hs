@@ -7,7 +7,7 @@ import Control.Monad.Except
 
 -- Types
 
-type DoubleMonad a = StateT MemoryState (ReaderT Env (ExceptT String IO)) a
+type MyMonad a = StateT Memory (ReaderT Env (ExceptT String IO)) a
 
 data ValueUnion = VInt Integer 
                 | VBool Bool 
@@ -17,69 +17,82 @@ data ValueUnion = VInt Integer
                 | NoValue
     deriving (Show)
 
-newtype Fun = Fun ([ValueUnion] -> DoubleMonad ValueUnion)
+newtype Fun = Fun ([ValueUnion] -> MyMonad ValueUnion)
 instance Show Fun where
     show f = "function"
 
-type Location = Integer
 type Env = Map Ident Location
-type MemoryState = Map Location ValueUnion
+
+type Location = Integer
+type VarMap = Map Location ValueUnion
 
 type Cost = Integer
 type Holder = Location
 
 type ReadCost = Map Location (Cost, Holder) 
 type WriteCost = Map Location (Cost, Holder) 
-type OpCost = Map Location (Cost, Holder) 
+type OpCost = Map Op (Cost, Holder) 
+
+data Memory = Memory 
+    { vm :: VarMap
+    , rc :: ReadCost
+    , wc :: WriteCost
+    , oc :: OpCost                          
+    }
+    deriving (Show)
 
 -- Helper functions
 
-io :: IO a -> DoubleMonad a
+io :: IO a -> MyMonad a
 io = lift . lift . lift
 
-newLoc :: DoubleMonad Location
+newLoc :: MyMonad Location
 newLoc = do
-    mem <- get
+    s <- get
+    let mem = vm s
     return (toInteger $ size mem)
 
-getValue :: Ident -> DoubleMonad ValueUnion
+getValue :: Ident -> MyMonad ValueUnion
 getValue i = do
     l <- getLoc i
     v <- getLocValue l
     return v
 
-getLoc :: Ident -> DoubleMonad Location
+getLoc :: Ident -> MyMonad Location
 getLoc i = do
     env <- ask
     if member i env
     then return $ env ! i
-    else throwError "Accessing undefined variable of function!"
+    else throwError "Accessing undefined variable or function!"
 
-getLocValue :: Location -> DoubleMonad ValueUnion
+getLocValue :: Location -> MyMonad ValueUnion
 getLocValue l = do
-    mem <- get
+    s <- get
+    let mem = vm s
     return $ mem ! l
 
-setNewValue :: Ident -> ValueUnion -> DoubleMonad Env
+setNewValue :: Ident -> ValueUnion -> MyMonad Env
 setNewValue i v = do
-    mem <- get
+    s <- get
+    let mem = vm s
     env <- ask
     l <- newLoc
-    put $ insert l v mem
+    put ( s { vm = insert l v mem } )
     let new_env = insert i l env
     return new_env
 
-setValue :: Ident -> ValueUnion -> DoubleMonad ()
+setValue :: Ident -> ValueUnion -> MyMonad ()
 setValue i v = do
     env <- ask
     let l = env ! i
     setLoc l v
     return ()
 
-setLoc :: Location -> ValueUnion -> DoubleMonad ()
+setLoc :: Location -> ValueUnion -> MyMonad ()
 setLoc l v = do
-    mem <- get
-    put $ adjust (const v) l mem
+    s <- get
+    let mem = vm s
+    put ( s { vm = adjust (const v) l mem } )
     return ()    
 
 mapToDecl :: (FuncDeclItem, ValueUnion) -> Decl
@@ -92,11 +105,16 @@ mapToDecl (FDItem t i, VBool v) = case v of
 
 -- Built in functions 
 
-get_init_memory_state :: MemoryState
-get_init_memory_state = fromList [(0, VFun $ Fun print_int_func)
-    ,(1, VFun $ Fun print_str_func)
-    ,(2, VFun $ Fun read_int_func)
-    ,(3, VFun $ Fun read_str_func)]
+get_init_memory_state :: Memory
+get_init_memory_state = 
+    Memory  { vm = fromList [(0, VFun $ Fun print_int_func)
+                            ,(1, VFun $ Fun print_str_func)
+                            ,(2, VFun $ Fun read_int_func)
+                            ,(3, VFun $ Fun read_str_func)]
+            ,rc = empty
+            ,wc = empty
+            ,oc = empty
+            }
 
 get_init_env :: Env
 get_init_env = fromList [(Ident "printInt", 0)
@@ -104,7 +122,7 @@ get_init_env = fromList [(Ident "printInt", 0)
     ,(Ident "readInt", 2)
     ,(Ident "readStr", 3)]
 
-print_int_func :: [ValueUnion] -> DoubleMonad ValueUnion
+print_int_func :: [ValueUnion] -> MyMonad ValueUnion
 print_int_func args = do
     if length args == 1
     then do
@@ -114,7 +132,7 @@ print_int_func args = do
     else throwError $ "Wrong number of arguments in printInt call!"
 
 
-print_str_func :: [ValueUnion] -> DoubleMonad ValueUnion
+print_str_func :: [ValueUnion] -> MyMonad ValueUnion
 print_str_func args = do
     if length args == 1
     then do
@@ -124,7 +142,7 @@ print_str_func args = do
     else throwError $ "Wrong number of arguments in printStr call!"
 
 
-read_int_func :: [ValueUnion] -> DoubleMonad ValueUnion
+read_int_func :: [ValueUnion] -> MyMonad ValueUnion
 read_int_func args = do
     if length args == 0
     then do
@@ -135,7 +153,7 @@ read_int_func args = do
     else throwError $ "Wrong number of arguments in readInt call!"
 
 
-read_str_func :: [ValueUnion] -> DoubleMonad ValueUnion
+read_str_func :: [ValueUnion] -> MyMonad ValueUnion
 read_str_func args = do
     if length args == 0
     then do
