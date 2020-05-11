@@ -40,6 +40,8 @@ get_built_in_type_env = fromList    [(Ident "printInt", FuncType $ FunT IntT [In
                                     ,(Ident "readInt", FuncType $ FunT IntT [])
                                     ,(Ident "readStr", FuncType $ FunT StringT [])]
 
+-- Helper functions
+
 setType :: Ident -> Type -> DoubleMonad TypeEnv
 setType i t = do
     typeEnv <- ask
@@ -75,6 +77,9 @@ assertTypeExprs [] _ _ = return ()
 assertTypeExprs (e:es) t s = do
     assertTypeExpr e t s
     assertTypeExprs es t s
+
+
+-- Functions for static type checking
 
 checkProgram :: Program -> DoubleMonad ()
 checkProgram (Program []) = return ()

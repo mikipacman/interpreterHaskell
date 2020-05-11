@@ -9,7 +9,6 @@ import Control.Monad.Except
 import Control.Monad (when)
 
 
-
 runTree :: Int -> Program -> IO ()
 runTree v p = do
     good <- verifyProgram v p
@@ -22,8 +21,31 @@ runTree v p = do
     else return ()
 
 
--- SEMANTIC FUNCTIONS --
+-- Helper functions
 
+getArrLoc :: Location -> [Acc] -> MyMonad Location
+getArrLoc l [] = return l
+getArrLoc l (a:ac) = do
+    (VArr m) <- getLocValue l
+    let (Acc e) = a
+    (VInt v) <- semE e
+    l2 <- if member v m 
+            then return $ m ! v
+            else throwError "Index out of bound!"
+    l3 <- getArrLoc l2 ac
+    return l3
+
+mapType :: Ident -> [ArrType] -> MyMonad [Location]
+mapType i [] = return []
+mapType i (t:ts) = do
+    let decl = ADecl t [NoInit i]
+    env <- semD decl
+    l <- local (const env) $ getLoc i
+    ls <- mapType i ts
+    return ([l] ++ ls)
+
+
+-- SEMANTIC FUNCTIONS --
 
 semManyD :: [Decl] -> MyMonad Env
 semManyD [] = ask
@@ -31,7 +53,6 @@ semManyD (d:ds) = do
     env <- semD d
     env2 <- local (const env) $ semManyD ds
     return env2
-
 
 semD :: Decl -> MyMonad Env
 semD decl = case decl of
@@ -41,9 +62,9 @@ semD decl = case decl of
             if (length p) == (length val_list)
             then do
                 let decl_list = map mapToDecl $ zip p val_list
-                env2 <- local (const env) $ semManyD decl_list   -- set params
-                env3 <- local (const env2) $ setNewValue i (VFun (Fun new_func)) -- recursion 
-                env4 <- local (const env3) $ semManyD d          -- init declared vars
+                env2 <- local (const env) $ semManyD decl_list                      -- set params
+                env3 <- local (const env2) $ setNewValue i (VFun (Fun new_func))    -- recursion 
+                env4 <- local (const env3) $ semManyD d                             -- init declared vars
                 local (const env4) $ semB $ Block s
                 local (const env4) $ semE e
             else do
@@ -88,23 +109,11 @@ semD decl = case decl of
                     setNewValue i (VArr $ fromList m)
         local (const env) $ semD $ ADecl t vs 
 
-
-mapType :: Ident -> [ArrType] -> MyMonad [Location]     -- TODO make it prettier
-mapType i [] = return []
-mapType i (t:ts) = do
-    let decl = ADecl t [NoInit i]
-    env <- semD decl
-    l <- local (const env) $ getLoc i
-    ls <- mapType i ts
-    return ([l] ++ ls)
-
-
 semB :: Block -> MyMonad ()
 semB (Block []) = return ()
 semB (Block (s:stmts)) = do
     semS s
     semB (Block stmts)
-
 
 semS :: Stmt -> MyMonad ()
 semS stmt = case stmt of
@@ -187,14 +196,12 @@ semS stmt = case stmt of
             return ()
 
 
-
-semManyE :: [Expr] -> MyMonad [ValueUnion]      -- TODO refactor
+semManyE :: [Expr] -> MyMonad [ValueUnion]
 semManyE [] = return []
 semManyE (e:es) = do
     v <- semE e
     vs <- semManyE es 
     return (v:vs) 
-
 
 semE :: Expr -> MyMonad ValueUnion
 semE exp = case exp of
@@ -205,7 +212,7 @@ semE exp = case exp of
             TrueL -> return (VBool True)
             FalseL -> return (VBool False)
     ExprGC gc -> case gc of
-        GRead i -> do                           -- TODO refactor maybe?
+        GRead i -> do
             s <- get
             l <- getLoc i
             let readCostM = rc s
@@ -307,17 +314,6 @@ semE exp = case exp of
         (VBool v2) <- semE e2
         return $ VBool $ (||) v1 v2
 
-updateOpCost :: Op -> MyMonad ()
-updateOpCost o = do
-    s <- get
-    let opCostM = oc s
-    if member o opCostM
-    then do
-        let (c, l) = opCostM ! o 
-        (VInt v) <- getLocValue l
-        setLoc l (VInt $ v + c)
-    else return ()
-
 semP :: Program -> MyMonad Memory
 semP (Program (d:ds)) = do
     env <- semD d
@@ -328,16 +324,3 @@ semP (Program []) = do
     local (const env) $ main []
     state <- get
     return state
-
-
-getArrLoc :: Location -> [Acc] -> MyMonad Location
-getArrLoc l [] = return l
-getArrLoc l (a:ac) = do
-    (VArr m) <- getLocValue l
-    let (Acc e) = a
-    (VInt v) <- semE e
-    l2 <- if member v m 
-            then return $ m ! v
-            else throwError "Index out of bound!"
-    l3 <- getArrLoc l2 ac
-    return l3

@@ -100,6 +100,17 @@ mapToDecl (FDItem t i, VBool v) = case v of
     True -> VDecl t [Init i (ExprLit TrueL)] 
     False -> VDecl t [Init i (ExprLit FalseL)] 
 
+updateOpCost :: Op -> MyMonad ()
+updateOpCost o = do
+    s <- get
+    let opCostM = oc s
+    if member o opCostM
+    then do
+        let (c, l) = opCostM ! o 
+        (VInt v) <- getLocValue l
+        setLoc l (VInt $ v + c)
+    else return ()
+
 
 -- Built in functions 
 
@@ -129,7 +140,6 @@ print_int_func args = do
         return (VInt 0)
     else throwError $ "Wrong number of arguments in printInt call!"
 
-
 print_str_func :: [ValueUnion] -> MyMonad ValueUnion
 print_str_func args = do
     if length args == 1
@@ -138,7 +148,6 @@ print_str_func args = do
         io $ putStrLn i
         return (VInt 0)
     else throwError $ "Wrong number of arguments in printStr call!"
-
 
 read_int_func :: [ValueUnion] -> MyMonad ValueUnion
 read_int_func args = do
@@ -149,7 +158,6 @@ read_int_func args = do
             [(int, "")] -> return $ VInt (int :: Integer)
             otherwise   -> throwError $ "That is not a number!"
     else throwError $ "Wrong number of arguments in readInt call!"
-
 
 read_str_func :: [ValueUnion] -> MyMonad ValueUnion
 read_str_func args = do
