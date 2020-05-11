@@ -24,5 +24,6 @@ interpreter : $(PARSER_FILES)
 
 # Rules for cleaning generated files.
 clean :
+	-rm -f $(GRAMA_FOLDER)/*.hi $(GRAMA_FOLDER)/*.o $(GRAMA_FOLDER)/*.log $(GRAMA_FOLDER)/*.aux $(GRAMA_FOLDER)/*.dvi
 	-rm -f $(SRC_FOLDER)/*.hi $(SRC_FOLDER)/*.o $(SRC_FOLDER)/*.log $(SRC_FOLDER)/*.aux $(SRC_FOLDER)/*.dvi
 	-rm -f interpreter
