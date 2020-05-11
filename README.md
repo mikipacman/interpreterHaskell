@@ -3,7 +3,7 @@
 W folderze ./grama znajdują się pliki wygenerowane
 przez BNFC z pliku gramatyka.
 
-W folderze src znajdują się pliki:
+W folderze ./src znajdują się pliki:
  - semantics.hs - zawiera wszystkie reguły semantyczne 
  - interpret.hs - parsuje drzewo i przekazuje je do właściwego interpretera
  - staticAnalysis.hs - analizuje statycznie drzewo przed wykonaniem programu
