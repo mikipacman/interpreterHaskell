@@ -19,3 +19,7 @@
   16 (1) (break, continue)
   17 (4) (funkcje wyższego rzędu, anonimowe, domknięcia)
   18 (3) (generatory)
+
+
+Nastąpiły modyfikacje tabelki. Pierwotnie był + przy 07, 
+a teraz jest -+ bo przekazywanie wartości jest tylko przez wartość. Przez przypadek zrobiłem za to punkt 13, więc postawiłem tam sobie +.
