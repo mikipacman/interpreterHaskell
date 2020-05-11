@@ -11,6 +11,7 @@ W folderze ./src znajdują się pliki:
 
 W folderach ./bad i ./good są przykłady programów złych i dobrych.
 
+```./interpreter --debug program.in``` Odpala program w trybie debug.
 
 # Opis języka
 Język jest rozszerzeniem okrojonego C.
