@@ -3,7 +3,7 @@
 W folderze ./grama znajdują się pliki wygenerowane
 przez BNFC z pliku gramatyka.
 
-W folderze src znajdują się pliki:
+W folderze ./src znajdują się pliki:
  - semantics.hs - zawiera wszystkie reguły semantyczne 
  - interpret.hs - parsuje drzewo i przekazuje je do właściwego interpretera
  - staticAnalysis.hs - analizuje statycznie drzewo przed wykonaniem programu
@@ -38,7 +38,7 @@ odczytu/zapisu danej zmiennej lub użyciu operatora. Każda zmienna może mieć
 tylko jeden "koszt" odczytu/zapisu i może on być zapisawany tylko do jednej 
 zmiennej w danej chwili (po jednej na odczyt i zapis).
 
-##Składnia:
+## Składnia:
 
 ```count <VAR1> read_cost/write_cost <EXP> with <VAR2>```
 
@@ -62,7 +62,7 @@ Zwraca obecny koszt odczytu/zapisu zmiennej VAR1.
 Zwraca obecny koszt operatora <OPRATOR>.
 
 
-##Przykłady:
+## Przykłady:
 
 ```
 int x = 0, a = 0, counter = 0;
